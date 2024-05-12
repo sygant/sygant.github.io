@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <link rel="stylesheet" type="text/css" href="GSW_Net.css">
+    <style>
+        @media screen and (max-width: 800px) {
+    .leftcolumn, .rightcolumn {   
+      width: 100%;
+      padding: 0;
+    }
+  }
+   
+  /* 响应式布局 -屏幕尺寸小于 400px 时，导航等布局改为上下布局 */
+  @media screen and (max-width: 400px) {
+    .guide_a a {
+      float: none;
+      width: 100%;
+    }
+  }
+    </style>
+    <title>Efficient Feature Matching and Pose-graph Initialization for SfM</title>
+</head>
+<body>
+  <!-- 头部导航栏 -->
+  <ul class = "HeadMenu">
+    <li class="HeadMenu_Content"><a class="LinkTo" href="#Introduction">Introduction</a></li>
+    <li class="HeadMenu_Content"><a class="LinkTo" href="#Methods">Methods</a></li>
+    <li class="HeadMenu_Content"><a class="LinkTo" href="#Experiments">Experiments</a></li>
+	<li class="HeadMenu_Content"><a class="LinkTo" href="#About us">About</a></li>
+  </ul>
+
+  <!-- 占位符 -->
+  <div class = "Empty_50"></div>
+
+  <!-- 主标题以及背景图片 -->
+  <div class = "HeadPicture">
+    <div class = "HeadWord">
+      <!-- 占位符 -->
+      <div class = "Empty_50"></div>
+      Efficient Feature Matching and Pose-graph Initialization for SfM
+      <!-- 占位符 -->
+      <div class = "Empty_20"></div>
+      <p class = "HeadWord">Wentian Gan; Zongqian Zhan; Xin Wang</p>
+    </div>
+  </div>
+
+  <!-- Introduction -->
+  <div class = "WhitePart">
+    <div class = "MainText_Title"><br><section id = "Introduction">Introduction</section><br></div>
+  </div>
+  <div class = "WhitePart">
+    <div class = "MainText_Content">
+      <br>
+      In the last few decades, Structure-from-Motion (SfM) has been intensively studied in the field of computer vision, photogrammetry. 
+	  However, it is still challenging to deal with large-scale datasets (such as crowdsourced or UAV images), wherein the feature matching and pose-graph generation are the key limitations in terms of time efficiency.
+      <br><br>
+      Similar the goal of Barath et al. (2021), we propose a method to improve the feature matching and initial pose graph generation algorithms for SfM (pose graph consists of node as images and edge between two images that survive from two-view geometric verification).  
+	  On the contrary to Barath et al. (2021), we improve the pose graph via using several orthogonal minimum spanning trees (MSTs) to build a more complete pose graph, then the pose graph generation begins two-view epipolar geometry based on the image pairs that are on orthogonal MSTs.
+      <br><br>
+      The overall workflow of our method is shown as Fig.1, the green parts denote our main works.
+	<br><br>
+    </div>
+  </div>
+  <div class = "WhitePart">
+    <img src="images/pipeline.png" width = "800" height = "560">
+  </div>
+
+  <!-- Methods -->
+  <div class = "GreyPart">
+    <div class = "MainText_Title"><br><section id = "Methods">Methods</section><br><br></div>
+  </div>
+	<div class = "GreyPart">
+    <div class = "MainText_Content">
+		The goal of this work is to propose an solution that can significantly improve the time efficiency for generating pose graph for
+		image dataset while maintaining the performance of subsequential SfM processing, i.e., our method can be expected to more
+		time efficiently yield input for SfM.
+		<br><br>
+		First, to generate a more complete pose graph faster, based on image similarity degree, several orthogonal MSTs are built as
+		an pre-built initialization of pose graph.
+		<br><br>
+    </div></div>
+	
+	<div class="GreyPart">
+		<img src="images/method1.png">
+	</div>
+	
+	<div class = "GreyPart">
+    <div class = "MainText_Content">
+	<br><br>
+		We propose to use multiple orthogonal MSTs to generate a robust pose graph and further improve 
+		the time efficiency (“orthogonal” means that any two MSTs do not share any single same edge). 
+		To obtain a MST, firstly, each image is considered as a root node of different trees in the graph G,
+		and one edge (image pair) has two vertices of root node. Secondly, retrieve the edge (image pair) 
+		with the highest similarity degree from the estimated similarity matrix, if two vertices of the edge 
+		belong to different trees, then we merge the corresponding root nodes into one tree and add the edge 
+		into the MST that is to be generated, otherwise it continues to process the next image pair with second 
+		highest similarity degree. Then, repeat the second step until only one tree left in the graph G, which is 
+		the final MST. Finally, a set of edges T = {(i, j)|i, j ∈ G} that includes all images and has the lowest 
+		cost is found. After the first MST tree is built, all the edges in the MST are added to the excluded set. 
+		Then we can get multiple orthogonal MSTs by repeating the above steps several times.
+
+    </div></div>
+	
+	<div class = "GreyPart">
+    <div class = "MainText_Content">
+	<br><br>
+		Second, to verify unknow two-view geometry more time efficient, a heuristic A* algorithm is employed to find visible path
+		between these two views, based on which the corresponding two-view geometry is estimated via propagation along the path.
+		
+		<br><br>
+    </div></div>
+	
+	
+	<div class = "GreyPart">
+    <div class = "MainText_Content">
+		Third, to speed up the time efficiency of feature matching, a hashing strategy based on epipolar lines (calculated from the
+		estimated relative pose) is utilized to narrow down the potential candidate matchable points.
+		<br><br>
+    </div></div>
+	
+	<div class="GreyPart">
+		<img src="images/method3.png">
+	</div>
+	
+	<div class = "GreyPart">
+	<div class = "MainText_Content">
+	<br><br>
+		We use a method called epipolar hash based on the essential matrix estimated in the previous step (two-view geometry propagation) to find the possible points which lies nearby the epipolar lines projected 
+		on the source image. Due to the characteristic of epipolar geometry, we divide the polar plane into different bins 
+		according to angles. Each bin shares the same epipole and the span of bin’s angle is [0,π)/#bins number 
+		or [a,b]/#bins number. The one that hits the epipolar line is the candidate bin to be explored. 
+		Finally, the feature matching are performed via considering the features on the candidate bin.
+		<br><br>
+    </div></div>
+	
+
+  
+
+  <!-- Experiment -->
+  <div class = "WhitePart">
+    <div class = "MainText_Title"><br><section id = "Experiments">Experiments</section><br></div>
+  </div>
+  <div class = "WhitePart">
+    <div class = "MainText_Content">
+      To validate the performance of the proposed method, we test several different image datasets. 
+	  To evaluate the time efficiency, two popular package (Colmap and openMVG) and one state-of-the-art method Barath
+	et al., (2021) are compared (section 4.2). Finally, the results of SfM are reported using the 
+	evaluation metric of mean track length, mean reprojection error and number of registered images.
+    <br><br>
+
+    </div>
+  </div>
+  <div class = "WhitePart">
+    <div class = "MainText_Content">
+      Our method is tested on three image datasets of Knapitsch et al.,
+	(2017), named as Family, Lighthouse and Playground, the table below
+	lists the information of image size and number of images and sample image of these three datasets. 
+	  <br><br>
+    </div>
+  </div>
+  <div class = "WhitePart">
+    <table border="1">
+      <tr>
+        <td class = "Experiments">Datasets Name</td>
+        <td class = "Experiments">Image Size</td>
+        <td class = "Experiments">Image Numbers</td>
+        <td class = "Experiments">Image Sample</td>
+      </tr>
+      <tr>
+        <td class = "Experiments">Family</td>
+        <td class = "Experiments">1920*1080</td>
+        <td class = "Experiments">152</td>
+        <td class = "Experiments"><img src="images/fml.jpg" width=200px></td>
+      </tr>
+      <tr>
+        <td class = "Experiments">Lighthouse</td>
+        <td class = "Experiments">2048*1080</td>
+        <td class = "Experiments">200</td>
+        <td class = "Experiments"><img src="images/fran.jpg" width=200px></td>
+      </tr>
+      <tr>
+        <td class = "Experiments">Playground</td>
+        <td class = "Experiments">1920*1080</td>
+        <td class = "Experiments">307</td>
+        <td class = "Experiments"><img src="images/play.jpg" width=200px></td>
+      </tr>
+    </table>
+    <br><br>
+  </div>
+  
+  <div class = "WhitePart">
+    <div class = "MainText_Content">
+	<br><br>
+      Before testing our method, the first step is to compute the similarity degree
+	matrix among images, which is normalized into (0, 1) and with
+	dimensions of n × n, higher value indicates that the two corresponding images are more likely to overlap with each other.
+	To do this, we use ResNet50 as backbone and GeM (Radenovićet al., 2018) as aggregation layer that is pre-trained on GLD-v1
+	(Noh et al., 2017) to extract global feature. After that, similarity
+	degree is computed via cosine distance, and in our experiment
+	image pairs with similarity over 0.5 are eligible for subsequential processing and 3 orthogonal 
+	MSTs are used to generate the starting pose graph.
+	  <br><br>
+    </div>
+  </div>
+  
+  
+  <div class = "WhitePart">
+    <div class = "MainText_Content">
+	 <strong>Performance of time efficiency</strong>
+    </div>
+  </div>
+  
+  <div class = "WhitePart">
+    <div class = "Empty_20"></div>
+  </div>
+  
+  <div class = "WhitePart">
+    <table border="1"  style="margin-top:30px">
+      <tr>
+		<td rowspan="2" style="border-top: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			Datasets
+		</td>
+		<td rowspan="2" style="border-top: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			Method
+		</td>
+		<td colspan="2" style="border-top: 1px solid rgb(0, 0, 0); border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			Cost time(s)
+		</td>
+	</tr>
+	<tr>
+		<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			extract feature
+		</td>
+		<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			pose graph
+		</td>
+	</tr>
+	<tr>
+		<td rowspan="4" style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			<i>Family</i>
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			our method
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			128.25
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			<b>106.14</b>
+		</td>
+	</tr>
+	<tr>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			Barath et al., (2021)
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			91.83
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			305.82
+		</td>
+	</tr>
+	<tr>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			openMVG
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			273.99
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			139.13
+		</td>
+	</tr>
+	<tr>
+		<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			Colmap
+		</td>
+		<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			13.98(GPU)
+		</td>
+		<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			381.36
+		</td>
+	</tr>
+	<tr>
+		<td rowspan="4" style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			<i>Lighthouse</i>
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			our method
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			121.18
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			<b>104.12</b>
+		</td>
+	</tr>
+	<tr>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			Barath et al., (2021)
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			120.00
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			149.47
+		</td>
+	</tr>
+	<tr>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			openMVG
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			172.13
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			115.40
+		</td>
+	</tr>
+	<tr>
+		<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			Colmap
+		</td>
+		<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			15.96(GPU)
+		</td>
+		<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			439.68
+		</td>
+	</tr>
+	<tr>
+		<td rowspan="4" style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			<i>Playground</i>
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			our method
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			189.06
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			<b>277.31</b>
+		</td>
+	</tr>
+	<tr>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			Barath et al., (2021)
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			180.56
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			391.10
+		</td>
+	</tr>
+	<tr>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			openMVG
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			331.21
+		</td>
+		<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			308.24
+		</td>
+	</tr>
+	<tr>
+		<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			Colmap
+		</td>
+		<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			31.86(GPU)
+		</td>
+		<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+			1465.32
+		</td>
+	</tr>
+    </table>
+  </div>
+  
+  
+  <div class = "WhitePart">
+    <div class = "Empty_20"></div>
+  </div>
+  
+  <div class = "WhitePart" style="margin-top:30px">
+    <img src="images/exp_family_steptime.png" width=300px></img>
+	<img src="images/exp_lighthouse_steptime.png" width=300px></img>
+	<img src="images/exp_playground_steptime.png" width=300px></img>
+  </div>
+  
+  <div class = "WhitePart">
+    <div class = "MainText_Content">
+	  <br><br>
+      We can find that our method is always the fast
+	solution when generating pose graph and exhibits significantly
+	reduction in processing time compared to Colmap. Colmap
+	computes pose graph time slowest, primarily due to its utilization of BF-search (brute-force) matching strategy. The second
+	fastest pipeline is the method of OpenMVG, which utilizes the
+	Fast-Cascade-Hashing-L2 matching algorithm. While this approach results in a significant speed improvement, but it typically need a greater amount of memory (Cheng et al., 2014). As
+	the feature extraction step in Colmap benefits from GPU acceleration, the total time for the initialization part was not included
+	in the comparative analysis. Comparing to Barath et al., (2021),
+	we are in general faster, this can be explained by the benefit of
+	the initialization stage using orthogonal MSTs.
+	  <br><br>
+    </div>
+  </div>
+  
+  
+  <div class = "WhitePart">
+    <div class = "MainText_Content">
+	 <strong>Performance of SfM</strong>
+    </div>
+  </div>
+  
+  <div class = "WhitePart">
+    <div class = "MainText_Content">
+	<br>
+	 The performance of SfM relies on the quality of feature matching and two-view geometric results. Therefore, in this section,
+	the popular framework - openMVG is employed as a SfM engine which take the output of our method and Barath et al.
+	(2021) as input to estimate image poses and 3D sparse point
+	cloud. Three evaluation metrics are computed:
+	
+	<ul>
+		<li>Mean Track length (MTL).Track length denotes the number
+		of images that a 3D point can be viewed on. Mean Track length
+		is the averaging track length for all triangulated 3D points. A
+		MTL value can typically imply the quality of feature matching,
+		i.e., higher MTL means better feature matching.</li>
+		<li>Mean Reprojection error (MRE).The reprojection error
+		represents a geometric discrepancy measured as the distance
+		between a reprojected 2D point and its corresponding feature
+		point on the image. MRE can be used to indicate how good the
+		whole SfM result is consistent to the projection model, such as
+		pin-hole.</li>
+		<li>Registered images number (RIN).The number of successfully
+		registered images in the photogrammetric block. A higher number of successfully registered images indicates a more complete
+		pose graph.</li>
+	</ul>
+	
+    </div>
+  </div>
+  
+  <div class = "WhitePart">
+    <table border="1">
+      <tr>
+			<td style="border-top: 1px solid rgb(0, 0, 0); border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				Dataset
+			<td style="border-top: 1px solid rgb(0, 0, 0); border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				Method
+			<td style="border-top: 1px solid rgb(0, 0, 0); border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				MTL
+			<td style="border-top: 1px solid rgb(0, 0, 0); border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				MRE(px)
+			<td style="border-top: 1px solid rgb(0, 0, 0); border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				RIN
+		<tr>
+			<td rowspan="4" style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<i>Family</i>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				our method
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				7.53
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<b>0.50</b>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<b>152/152</b>
+		<tr>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				Barath et al., (2021)
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				3.80
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				0.83
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				141/152
+		<tr>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				openMVG
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				7.02
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				0.67
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				152/152
+		<tr>
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				Colmap
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<b>8.06</b>
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				0.87
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				152/152
+		<tr>
+			<td rowspan="4" style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<i>Lighthouse</i>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				our method
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				5.41
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<b>0.61</b>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				198/200
+		<tr>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				Barath et al., (2021)
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				5.35
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				0.63
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				186/200
+		<tr>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				openMVG
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				5.21
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				0.90
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				196/200
+		<tr>
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				Colmap
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<b>7.74</b>
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				0.66
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<b>200/200</b>
+		<tr>
+			<td rowspan="4" style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<i>Playground</i>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				our method
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				5.73
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<b>0.49</b>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<b>307/307</b>
+		<tr>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				Barath et al., (2021)
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				5.67
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				0.68
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				307/307
+		<tr>
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				openMVG
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				4.20
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				0.99
+			<td style="text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				302/307
+		<tr>
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				Colmap
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				<b>6.03</b>
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				0.65
+			<td style="border-bottom: 1px solid rgb(0, 0, 0); text-align: center; padding-right: 3pt; padding-left: 3pt;">
+				307/307
+      </tr>
+    </table>
+  </div>
+  
+  <div class = "WhitePart">
+    <div class = "Empty_20"></div>
+  </div>
+  
+  <div class = "WhitePart">
+    <div class = "MainText_Content">
+	<br><br>
+		It can be observed that the method proposed in this paper exhibits the highest reconstruction 
+		accuracy regarding MRE, while the pipeline based on
+		Colmap always exhibit the longest MTL. In terms of the successfully registered number of images, 
+		the method proposed is
+		just slightly inferior to Colmap. For colmap, the inherent feature
+		extraction module is used which generate approximately 3000
+		more feature points per image, as a result, the corresponding
+		MTL and RIN is always the best as more correspondences are
+		found and more edges are likely to pass the two-view geometric verification. 
+		Compared to the original pose graph method
+		Barath et al., (2021), our method shows superior results on all
+		three metrics, which demonstrate the efficacy of the proposed
+		integration of multiple orthogonal MSTs.  The visual SfM reconstruction results are shown as below:
+    </div>
+  </div>
+
+<div class = "WhitePart" style="margin-bottom:50px">
+	<img src="images/sparselighthouse.png" width=300px></img>
+	<img src="images/sparsefamily.png" width=300px></img>
+	<img src="images/sparseplayground.png" width=300px></img>
+</div>
+  
+
+
+  <!-- About us -->
+  <div class = "GreyPart">
+    <div class = "MainText_Title"><br><section id = "About us">About us</section><br></div>
+  </div>
+  <div class = "GreyPart">
+    <div class = "MainText_Content">
+      If you have any questions or advice, you can contact us through following address:
+      <ul>
+        <li>gwt2019@whu.edu.cn, Wentian Gan, WuHan University</li>
+		<li>xwang@sgg.whu.edu.cn, Xin Wang, WuHan University</li>
+        <li>zqzhan@sgg.whu.edu.cn, Zongqian Zhan, WuHan University</li>
+      </ul>
+      Thanks for your support!
+    </div>
+  </div>
+ 
+  <div class = "GreyPart">
+    <div class = "Empty_50"></div>
+  </div>
+</body>
+</html>
